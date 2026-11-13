@@ -8,7 +8,14 @@ import {
   QuickFixesNote,
   SimplerNote,
 } from "./components/Sidebar.jsx";
-import { applyFixes, computeHighlights, listFixes, listHardSentences } from "./highlights.js";
+import {
+  applyFixes,
+  computeHighlights,
+  highlightsNow,
+  listFixes,
+  listHardSentences,
+  overallDifficulty,
+} from "./highlights.js";
 import { loadNgram, suggestNgram } from "./ngram.js";
 
 // localStorage can be unavailable (private mode) — never let it break the page.
@@ -35,6 +42,8 @@ function usePersisted(key, fallback) {
 const LLM_PAUSE_MS = 400;
 // The difficulty score is recalculated only after the user stops typing for this long.
 const DIFFICULTY_PAUSE_MS = 2000;
+// The backend checks (features 5-9) are called only after the user stops typing for this long.
+const HIGHLIGHT_PAUSE_MS = 300;
 
 export default function App() {
   const [text, setText] = usePersisted("blank", "");
@@ -112,33 +121,53 @@ export default function App() {
     setText((t) => t + suggestion + " ");
   }, [setText, suggestion]);
 
-  // ---- feature 5: difficulty score (placeholder: random number until the model is connected) ----
-  const [difficulty, setDifficulty] = useState(() => Math.floor(Math.random() * 101));
-  const [calculating, setCalculating] = useState(false);
-  const firstRender = useRef(true);
-
+  // ---- features 5, 7, 8, 9: highlights in the text + their quick fixes ----
+  // The checks are async: while they run, show what is already cached (highlightsNow),
+  // so the mirror always matches the current text and the trigger boxes never wait.
+  const [scored, setScored] = useState({ for: null, chunks: [] });
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    setCalculating(true);
+    let cancelled = false;
     const id = setTimeout(() => {
-      setDifficulty(Math.floor(Math.random() * 101));
-      setCalculating(false);
-    }, DIFFICULTY_PAUSE_MS);
-    return () => clearTimeout(id);
+      computeHighlights(text)
+        .then((chunks) => !cancelled && setScored({ for: text, chunks }))
+        .catch((e) => console.error("[highlights]", e));
+    }, HIGHLIGHT_PAUSE_MS);
+    return () => {
+      cancelled = true;
+      clearTimeout(id);
+    };
   }, [text]);
-
-  // ---- features 7, 8, 9: highlights in the text + their quick fixes ----
-  const highlights = useMemo(() => computeHighlights(text), [text]);
+  const highlights = useMemo(
+    () => (scored.for === text ? scored.chunks : highlightsNow(text)),
+    [scored, text],
+  );
   const fixes = useMemo(() => listFixes(highlights), [highlights]);
   const applyFix = useCallback((list) => setText((t) => applyFixes(t, list)), [setText]);
+
+  // ---- feature 5: difficulty gauge = length-weighted average of the sentence scores ----
+  // Shows "Calculating…" while typing, until the text has been still for DIFFICULTY_PAUSE_MS
+  // and the backend has scored it.
+  const [settled, setSettled] = useState(text);
+  useEffect(() => {
+    const id = setTimeout(() => setSettled(text), DIFFICULTY_PAUSE_MS);
+    return () => clearTimeout(id);
+  }, [text]);
+  const difficulty = useMemo(() => overallDifficulty(scored.chunks), [scored]);
+  const calculating = settled !== text || scored.for !== text;
 
   // ---- feature 6: "Simpler version" note, one pink sentence at a time ----
   // Sentences the user kept ("nah") or that are the result of a swap are not offered again.
   const [skipped, setSkipped] = useState(() => new Set());
-  const hardSentences = useMemo(() => listHardSentences(highlights, skipped), [highlights, skipped]);
+  const [hardSentences, setHardSentences] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    listHardSentences(highlights, skipped)
+      .then((list) => !cancelled && setHardSentences(list))
+      .catch((e) => console.error("[simplify]", e));
+    return () => {
+      cancelled = true;
+    };
+  }, [highlights, skipped]);
   const [hardIndex, setHardIndex] = useState(0);
   const current = Math.min(hardIndex, Math.max(hardSentences.length - 1, 0));
   const [lastAction, setLastAction] = useState(null); // { type: 'swapped' | 'kept', item }
@@ -212,7 +241,11 @@ export default function App() {
           </main>
           <aside className="aside" aria-label="Side notes">
             {/*<LearnNote onOpenCheat={openCheat} />*/}
-            <DifficultyNote score={difficulty} calculating={calculating} />
+            <DifficultyNote
+              score={difficulty?.score ?? 0}
+              calculating={calculating}
+              hardest={difficulty ? `sentence ${difficulty.hardest} is the worst` : "nothing to score yet"}
+            />
             <SimplerNote
               sentences={hardSentences}
               index={current}

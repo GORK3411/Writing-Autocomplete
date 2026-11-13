@@ -3,21 +3,12 @@
 //   "lang"  = [fatigué]                   -> tired         (feature 2)
 //   "idiom" = {something very easy}       -> a piece of cake (feature 3)
 //
-// PLACEHOLDER: a tiny hard-coded table until the backend's embedding search is ready.
-// Replace the body of suggestForTrigger with a fetch to the backend; it is already
-// async, so the popup (loading state, picking) does not need to change.
+// The candidates come from the backend (backend/app/features/describe.py, translate.py,
+// idiom.py). The popup (loading state, picking) does not need to change.
 
-const DEMO = {
-  desc: {
-    "a person who writes books": [["author", 0.92], ["writer", 0.88], ["novelist", 0.71]],
-  },
-  lang: {
-    "fatigué": [["tired", 0.95], ["exhausted", 0.81], ["weary", 0.64]],
-  },
-  idiom: {
-    "something very easy": [["a piece of cake", 0.93], ["a walk in the park", 0.86], ["child's play", 0.7]],
-  },
-};
+import * as api from "./api.js";
+
+const ENDPOINT = { desc: api.describe, lang: api.translate, idiom: api.idiom };
 
 /** Popup title per trigger kind. */
 export const TRIGGER_TITLE = {
@@ -32,9 +23,9 @@ export const TRIGGER_TITLE = {
  * for the masked-LM reranking). Resolves to [[word, score 0..1], ...].
  */
 export async function suggestForTrigger(kind, query, sentence) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  return DEMO[kind]?.[q] ?? [["NLP", 0.5]];
+  if (!query.trim() || !ENDPOINT[kind]) return [];
+  const candidates = await ENDPOINT[kind](query, sentence);
+  return candidates.map((c) => [c.text, c.score]);
 }
 
 /** Text between the opening and (optional) closing quote/bracket. */
