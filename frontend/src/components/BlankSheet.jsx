@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { computeHighlights } from '../highlights.js';
 import { countWords, Holes, todayLabel } from './Sheet.jsx';
 
 const PLACEHOLDER = `Start writing…
@@ -13,7 +14,9 @@ Grey text = a suggestion. Press Tab to keep it.`;
  *
  * Ghost text: a <textarea> can't colour part of its text, so a "mirror" div with
  * the same font sits behind it. The mirror's copy of the text is invisible and
- * only pushes the grey suggestion to exactly where the cursor is.
+ * only pushes the grey suggestion to exactly where the cursor is. The same mirror
+ * paints the highlight backgrounds (yellow / blue / pink), which show through the
+ * transparent textarea right under the matching words.
  */
 export default function BlankSheet({ text, onChange, suggestion = '', onAccept }) {
   const ref = useRef(null);
@@ -31,6 +34,8 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept }
 
   // Only when typing at the end: a suggestion in the middle of the text would cover words.
   const ghost = text && caretAtEnd ? suggestion : '';
+
+  const highlights = useMemo(() => computeHighlights(text), [text]);
 
   const onKeyDown = (e) => {
     if (e.key === 'Tab' && ghost && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -51,7 +56,7 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept }
         </label>
         <div className="blank-field">
           <div className="blank-mirror" aria-hidden="true">
-            {text}
+            <Highlighted chunks={highlights} />
             <span className="ghost">{ghost}</span>
           </div>
           <textarea
@@ -73,4 +78,28 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept }
       </article>
     </>
   );
+}
+
+const MARK_CLASS = { hard: 'u-hard', better: 'u-better' };
+
+/** Mirror copy of the text with the highlight spans (the text itself stays invisible). */
+function Highlighted({ chunks }) {
+  return chunks.map((c, i) => {
+    const parts = c.parts.map((p, j) =>
+      p.mark ? (
+        <span key={j} className={MARK_CLASS[p.mark]}>
+          {p.text}
+        </span>
+      ) : (
+        p.text
+      ),
+    );
+    return c.hardSentence ? (
+      <span key={i} className="hardsent">
+        {parts}
+      </span>
+    ) : (
+      <span key={i}>{parts}</span>
+    );
+  });
 }
