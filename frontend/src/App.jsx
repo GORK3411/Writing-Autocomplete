@@ -2,7 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BlankSheet from "./components/BlankSheet.jsx";
 import CheatSheet from "./components/CheatSheet.jsx";
 import { Legend } from "./components/Sheet.jsx";
-import { LearnNote } from "./components/Sidebar.jsx";
+import {
+  DifficultyNote,
+  LearnNote,
+  QuickFixesNote,
+  SimplerNote,
+} from "./components/Sidebar.jsx";
+import { applyFixes, computeHighlights, listFixes } from "./highlights.js";
 import { loadNgram, suggestNgram } from "./ngram.js";
 
 // localStorage can be unavailable (private mode) — never let it break the page.
@@ -27,6 +33,8 @@ function usePersisted(key, fallback) {
 
 // The LLM runs only after the user stops typing for this long.
 const LLM_PAUSE_MS = 400;
+// The difficulty score is recalculated only after the user stops typing for this long.
+const DIFFICULTY_PAUSE_MS = 2000;
 
 export default function App() {
   const [text, setText] = usePersisted("blank", "");
@@ -104,6 +112,29 @@ export default function App() {
     setText((t) => t + suggestion + " ");
   }, [setText, suggestion]);
 
+  // ---- feature 5: difficulty score (placeholder: random number until the model is connected) ----
+  const [difficulty, setDifficulty] = useState(() => Math.floor(Math.random() * 101));
+  const [calculating, setCalculating] = useState(false);
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    setCalculating(true);
+    const id = setTimeout(() => {
+      setDifficulty(Math.floor(Math.random() * 101));
+      setCalculating(false);
+    }, DIFFICULTY_PAUSE_MS);
+    return () => clearTimeout(id);
+  }, [text]);
+
+  // ---- features 7, 8, 9: highlights in the text + their quick fixes ----
+  const highlights = useMemo(() => computeHighlights(text), [text]);
+  const fixes = useMemo(() => listFixes(highlights), [highlights]);
+  const applyFix = useCallback((list) => setText((t) => applyFixes(t, list)), [setText]);
+
   return (
     <div className="page">
       <div className="wrap">
@@ -140,10 +171,14 @@ export default function App() {
               onChange={setText}
               suggestion={suggestion}
               onAccept={acceptSuggestion}
+              highlights={highlights}
             />
           </main>
           <aside className="aside" aria-label="Side notes">
-            <LearnNote onOpenCheat={openCheat} />
+            {/*<LearnNote onOpenCheat={openCheat} />*/}
+            <DifficultyNote score={difficulty} calculating={calculating} />
+            <SimplerNote />
+            <QuickFixesNote fixes={fixes} onFix={applyFix} />
           </aside>
         </div>
       </div>

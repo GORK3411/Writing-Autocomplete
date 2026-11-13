@@ -162,9 +162,9 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, .sheet:focus-visi
 /* ---------- legend ---------- */
 .legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 8px; font: 22px var(--hand); color: var(--ink); }
 .legend .k-find { border: 2px solid var(--blue); border-radius: 10px; padding: 0 6px; color: var(--blue); }
-.legend .k-err { text-decoration: underline wavy var(--mark-err); }
-.legend .k-better { background: var(--mark-better); padding: 0 4px; }
-.legend .k-hard { background: var(--mark-hard); padding: 0 4px; }
+.legend .k-err, .fixes .k-err { text-decoration: underline wavy var(--mark-err); }
+.legend .k-better, .fixes .k-better { background: var(--mark-better); padding: 0 4px; }
+.legend .k-hard, .fixes .k-hard { background: var(--mark-hard); padding: 0 4px; }
 .legend .k-sent { background: var(--mark-sent); padding: 0 4px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .topbar .help-note { flex-shrink: 0; }
@@ -174,6 +174,11 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, .sheet:focus-visi
 .sticky { box-shadow: 0 10px 18px rgba(40, 70, 140, 0.18); padding: 18px 18px 20px; }
 .sticky h2 { margin: 0; font: 700 30px var(--hand); }
 .sticky ol { margin: 6px 0 0; padding-left: 22px; font-size: 19px; line-height: 1.5; }
+.fixes-list {
+  display: flex; flex-direction: column; gap: 4px;
+  max-height: 260px; overflow-y: auto; padding-right: 6px;
+  scrollbar-width: thin; scrollbar-color: var(--green) transparent;
+}
 
 /* ---------- blank page ---------- */
 .blank-label { display: block; font: 700 40px/48px var(--hand); color: var(--blue); }

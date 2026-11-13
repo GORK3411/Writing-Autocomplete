@@ -1,5 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { computeHighlights } from '../highlights.js';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { countWords, Holes, todayLabel } from './Sheet.jsx';
 
 const PLACEHOLDER = `Start writing…
@@ -18,7 +17,7 @@ Grey text = a suggestion. Press Tab to keep it.`;
  * paints the highlight backgrounds (yellow / blue / pink), which show through the
  * transparent textarea right under the matching words.
  */
-export default function BlankSheet({ text, onChange, suggestion = '', onAccept }) {
+export default function BlankSheet({ text, onChange, suggestion = '', onAccept, highlights = [] }) {
   const ref = useRef(null);
   const [caretAtEnd, setCaretAtEnd] = useState(true);
 
@@ -34,8 +33,6 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept }
 
   // Only when typing at the end: a suggestion in the middle of the text would cover words.
   const ghost = text && caretAtEnd ? suggestion : '';
-
-  const highlights = useMemo(() => computeHighlights(text), [text]);
 
   const onKeyDown = (e) => {
     if (e.key === 'Tab' && ghost && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
@@ -80,7 +77,7 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept }
   );
 }
 
-const MARK_CLASS = { hard: 'u-hard', better: 'u-better' };
+const MARK_CLASS = { err: 'u-err', hard: 'u-hard', better: 'u-better' };
 
 /** Mirror copy of the text with the highlight spans (the text itself stays invisible). */
 function Highlighted({ chunks }) {
