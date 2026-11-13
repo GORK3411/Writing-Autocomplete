@@ -178,10 +178,19 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, .sheet:focus-visi
 /* ---------- blank page ---------- */
 .blank-label { display: block; font: 700 40px/48px var(--hand); color: var(--blue); }
 .blank-text {
-  width: 100%; border: 0; background: transparent; resize: vertical;
+  width: 100%; border: 0; background: transparent; resize: none; overflow: hidden;
   font: 22px/48px var(--print); color: var(--ink); padding: 0; min-height: 480px;
 }
 .blank-text::placeholder { color: var(--muted); }
+
+/* ghost text: mirror div behind the (transparent) textarea, same font and wrapping */
+.blank-field { position: relative; }
+.blank-field .blank-text { position: relative; z-index: 1; display: block; }
+.blank-mirror {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  font: 22px/48px var(--print); color: transparent; padding: 0;
+  white-space: pre-wrap; overflow-wrap: break-word;
+}
 
 /* ---------- cheat sheet ---------- */
 .overlay {

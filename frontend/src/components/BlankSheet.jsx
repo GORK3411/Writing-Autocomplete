@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import { countWords, Holes, todayLabel } from './Sheet.jsx';
 
 const PLACEHOLDER = `Start writing…
@@ -7,8 +8,37 @@ Stuck on a word? Try:
 
 Grey text = a suggestion. Press Tab to keep it.`;
 
-/** Empty page with the grey first-time hint (board 7c). */
-export default function BlankSheet({ text, onChange }) {
+/**
+ * Empty page with the grey first-time hint (board 7c).
+ *
+ * Ghost text: a <textarea> can't colour part of its text, so a "mirror" div with
+ * the same font sits behind it. The mirror's copy of the text is invisible and
+ * only pushes the grey suggestion to exactly where the cursor is.
+ */
+export default function BlankSheet({ text, onChange, suggestion = '', onAccept }) {
+  const ref = useRef(null);
+  const [caretAtEnd, setCaretAtEnd] = useState(true);
+
+  const trackCaret = (el) =>
+    setCaretAtEnd(el.selectionStart === el.selectionEnd && el.selectionEnd === el.value.length);
+
+  // Grow with the text instead of scrolling, so the mirror never has to follow a scroll position.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    el.style.height = 'auto';
+    el.style.height = el.scrollHeight + 'px';
+  }, [text]);
+
+  // Only when typing at the end: a suggestion in the middle of the text would cover words.
+  const ghost = text && caretAtEnd ? suggestion : '';
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Tab' && ghost && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      e.preventDefault(); // keep focus in the editor
+      onAccept?.();
+    }
+  };
+
   return (
     <>
       <article className="sheet" style={{ minHeight: 620 }}>
@@ -19,15 +49,27 @@ export default function BlankSheet({ text, onChange }) {
         <label htmlFor="nb-text" className="blank-label">
           Untitled page
         </label>
-        <textarea
-          id="nb-text"
-          className="blank-text"
-          rows={10}
-          placeholder={PLACEHOLDER}
-          value={text}
-          onChange={(e) => onChange(e.target.value)}
-          spellCheck={false}
-        />
+        <div className="blank-field">
+          <div className="blank-mirror" aria-hidden="true">
+            {text}
+            <span className="ghost">{ghost}</span>
+          </div>
+          <textarea
+            ref={ref}
+            id="nb-text"
+            className="blank-text"
+            rows={10}
+            placeholder={PLACEHOLDER}
+            value={text}
+            onChange={(e) => {
+              onChange(e.target.value);
+              trackCaret(e.target);
+            }}
+            onSelect={(e) => trackCaret(e.target)}
+            onKeyDown={onKeyDown}
+            spellCheck={false}
+          />
+        </div>
       </article>
     </>
   );

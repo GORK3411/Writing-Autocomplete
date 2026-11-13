@@ -222,3 +222,6 @@ __marimo__/
 # Node / frontend
 node_modules/
 
+
+# Generated n-gram table (build with backend/scripts/build_ngram.py)
+frontend/public/ngram.json
