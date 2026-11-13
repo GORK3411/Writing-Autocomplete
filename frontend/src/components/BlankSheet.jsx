@@ -19,7 +19,7 @@ Grey text = a suggestion. Press Tab to keep it.`;
  * paints the highlight backgrounds (yellow / blue / pink), which show through the
  * transparent textarea right under the matching words.
  */
-export default function BlankSheet({ text, onChange, suggestion = '', onAccept, highlights = [] }) {
+export default function BlankSheet({ text, onChange, suggestion = '', onAccept, highlights = [], currentSentence }) {
   const ref = useRef(null);
   const fieldRef = useRef(null);
   const mirrorRef = useRef(null);
@@ -58,7 +58,7 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept, 
         </label>
         <div className="blank-field" ref={fieldRef}>
           <div className="blank-mirror" aria-hidden="true" ref={mirrorRef}>
-            <Highlighted chunks={highlights} />
+            <Highlighted chunks={highlights} current={currentSentence} />
             <span className="ghost">{ghost}</span>
           </div>
           <textarea
@@ -87,7 +87,8 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept, 
 const MARK_CLASS = { err: 'u-err', hard: 'u-hard', better: 'u-better', trig: 'u-trig' };
 
 /** Mirror copy of the text with the highlight spans (the text itself stays invisible). */
-function Highlighted({ chunks }) {
+// `current` = start of the pink sentence shown in the "Simpler version" note (outlined).
+function Highlighted({ chunks, current }) {
   return chunks.map((c, i) => {
     const parts = c.parts.map((p, j) =>
       p.mark ? (
@@ -99,7 +100,7 @@ function Highlighted({ chunks }) {
       ),
     );
     return c.hardSentence ? (
-      <span key={i} className="hardsent">
+      <span key={i} className={'hardsent' + (c.start === current ? ' current' : '')}>
         {parts}
       </span>
     ) : (

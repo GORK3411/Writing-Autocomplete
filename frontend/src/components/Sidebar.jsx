@@ -1,4 +1,3 @@
-import { useState } from 'react';
 // Side notes beside the page (board 7).
 
 /** Side note shown beside the page. */
@@ -54,32 +53,65 @@ export function DifficultyNote({ score = 62, calculating = false, hardest = 'sen
   );
 }
 
-/** Feature 6: simpler rewrite of the hardest sentence. */
-export function SimplerNote({ suggestion = '"Despite the effects of moving, the decision came down to money."' }) {
-  const [state, setState] = useState('hard'); // 'hard' | 'swapped' | 'kept'
+/**
+ * Feature 6: simpler rewrite of the pink sentences, one at a time.
+ * `sentences` = [{ start, from, to }] in text order; ‹ › arrows switch between them.
+ * `lastAction` = { type: 'swapped' | 'kept', item } -> small message with an undo.
+ */
+export function SimplerNote({ sentences = [], index = 0, onIndex, onSwap, onKeep, lastAction, onUndo }) {
+  const item = sentences[index];
+  const count = sentences.length;
   return (
-    <section className="sticky" style={{ background: 'var(--note-pink)', transform: 'rotate(-1.5deg)' }}>
-      <h2 style={{ color: 'var(--rose)' }}>Simpler version</h2>
-      {state === 'hard' && (
+    <section className="sticky simpler" style={{ background: 'var(--note-pink)', transform: 'rotate(-1.5deg)' }}>
+      <div className="simpler-head">
+        <h2 style={{ color: 'var(--rose)' }}>Simpler version</h2>
+        {count > 1 && (
+          <div className="pager">
+            <button
+              className="arrow"
+              type="button"
+              aria-label="Previous hard sentence"
+              disabled={index === 0}
+              onClick={() => onIndex?.(index - 1)}
+            >
+              ‹
+            </button>
+            <span className="hand" aria-live="polite">
+              {index + 1} / {count}
+            </span>
+            <button
+              className="arrow"
+              type="button"
+              aria-label="Next hard sentence"
+              disabled={index === count - 1}
+              onClick={() => onIndex?.(index + 1)}
+            >
+              ›
+            </button>
+          </div>
+        )}
+      </div>
+
+      {lastAction && (
+        <p className="simpler-msg">
+          {lastAction.type === 'swapped' ? 'Swapped!' : 'Kept your sentence.'}{' '}
+          <button className="chip grey" type="button" onClick={onUndo}>
+            ↶ undo
+          </button>
+        </p>
+      )}
+
+      {item ? (
         <>
-          <p style={{ margin: '6px 0 12px', fontSize: 20, lineHeight: 1.4 }}>{suggestion}</p>
+          <p className="simpler-from">{item.from}</p>
+          <p style={{ margin: '0 0 12px', fontSize: 20, lineHeight: 1.4 }}>→ {item.to}</p>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="tag" type="button" onClick={() => setState('swapped')}>swap it</button>
-            <button className="tag flat" type="button" onClick={() => setState('kept')}>nah</button>
+            <button className="tag" type="button" onClick={() => onSwap?.(item)}>swap it</button>
+            <button className="tag flat" type="button" onClick={() => onKeep?.(item)}>nah</button>
           </div>
         </>
-      )}
-      {state === 'swapped' && (
-        <>
-          <p style={{ margin: '6px 0 12px', fontSize: 20 }}>Swapped! Sentence 6 is easy now.</p>
-          <button className="tag" type="button" onClick={() => setState('hard')}>↶ undo</button>
-        </>
-      )}
-      {state === 'kept' && (
-        <>
-          <p style={{ margin: '6px 0 12px', fontSize: 20 }}>Kept your original sentence.</p>
-          <button className="tag" type="button" onClick={() => setState('hard')}>show again</button>
-        </>
+      ) : (
+        <p className="hand" style={{ margin: '4px 0 0', fontSize: 24, color: 'var(--rose)' }}>nothing hard to read ✓</p>
       )}
     </section>
   );

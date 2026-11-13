@@ -8,7 +8,7 @@ import {
   QuickFixesNote,
   SimplerNote,
 } from "./components/Sidebar.jsx";
-import { applyFixes, computeHighlights, listFixes } from "./highlights.js";
+import { applyFixes, computeHighlights, listFixes, listHardSentences } from "./highlights.js";
 import { loadNgram, suggestNgram } from "./ngram.js";
 
 // localStorage can be unavailable (private mode) — never let it break the page.
@@ -135,6 +135,41 @@ export default function App() {
   const fixes = useMemo(() => listFixes(highlights), [highlights]);
   const applyFix = useCallback((list) => setText((t) => applyFixes(t, list)), [setText]);
 
+  // ---- feature 6: "Simpler version" note, one pink sentence at a time ----
+  // Sentences the user kept ("nah") or that are the result of a swap are not offered again.
+  const [skipped, setSkipped] = useState(() => new Set());
+  const hardSentences = useMemo(() => listHardSentences(highlights, skipped), [highlights, skipped]);
+  const [hardIndex, setHardIndex] = useState(0);
+  const current = Math.min(hardIndex, Math.max(hardSentences.length - 1, 0));
+  const [lastAction, setLastAction] = useState(null); // { type: 'swapped' | 'kept', item }
+
+  const skip = (sentence, on) =>
+    setSkipped((s) => {
+      const next = new Set(s);
+      on ? next.add(sentence) : next.delete(sentence);
+      return next;
+    });
+
+  const swapSentence = (item) => {
+    setText((t) => applyFixes(t, [item]));
+    skip(item.to, true);
+    setLastAction({ type: "swapped", item });
+  };
+  const keepSentence = (item) => {
+    skip(item.from, true);
+    setLastAction({ type: "kept", item });
+  };
+  const undoLast = () => {
+    const { type, item } = lastAction;
+    if (type === "swapped") {
+      setText((t) => applyFixes(t, [{ start: item.start, from: item.to, to: item.from }]));
+      skip(item.to, false);
+    } else {
+      skip(item.from, false);
+    }
+    setLastAction(null);
+  };
+
   return (
     <div className="page">
       <div className="wrap">
@@ -172,12 +207,21 @@ export default function App() {
               suggestion={suggestion}
               onAccept={acceptSuggestion}
               highlights={highlights}
+              currentSentence={hardSentences[current]?.start}
             />
           </main>
           <aside className="aside" aria-label="Side notes">
             {/*<LearnNote onOpenCheat={openCheat} />*/}
             <DifficultyNote score={difficulty} calculating={calculating} />
-            <SimplerNote />
+            <SimplerNote
+              sentences={hardSentences}
+              index={current}
+              onIndex={setHardIndex}
+              onSwap={swapSentence}
+              onKeep={keepSentence}
+              lastAction={lastAction}
+              onUndo={undoLast}
+            />
             <QuickFixesNote fixes={fixes} onFix={applyFix} />
           </aside>
         </div>

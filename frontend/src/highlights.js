@@ -127,7 +127,7 @@ export function computeHighlights(text) {
       last = w.index + word.length;
     }
     if (last < body.length) parts.push({ text: body.slice(last), mark: null });
-    chunks.push({ text: body, hardSentence, parts });
+    chunks.push({ text: body, start: bodyStart, hardSentence, parts });
 
     const trail = raw.slice(lead + body.length);
     if (trail) chunks.push({ text: trail, hardSentence: false, parts: [{ text: trail, mark: null }] });
@@ -144,6 +144,25 @@ export function listFixes(chunks) {
     .flatMap((c) => c.parts)
     .filter((p) => p.mark && p.fix && p.fix !== p.text)
     .map((p) => ({ start: p.start, from: p.text, to: p.fix, mark: p.mark }));
+}
+
+/**
+ * Feature 6: simpler rewrite of a pink sentence.
+ * PLACEHOLDER: always the same sentence until the T5 simplification model is connected.
+ */
+export function simplifySentence(sentence) {
+  return "Despite the effects of moving, the decision came down to money.";
+}
+
+/**
+ * Pink sentences for the "Simpler version" note, in text order, minus the ones in
+ * `skip` (sentence texts the user kept or already swapped). Returns [{ start, from, to }].
+ */
+export function listHardSentences(chunks, skip = new Set()) {
+  return chunks
+    .filter((c) => c.hardSentence && !skip.has(c.text))
+    .map((c) => ({ start: c.start, from: c.text, to: simplifySentence(c.text) }))
+    .filter((s) => s.to && s.to !== s.from);
 }
 
 /** Apply fixes to the text (from the end, so earlier offsets stay valid). */

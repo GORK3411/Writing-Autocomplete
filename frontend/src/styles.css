@@ -230,3 +230,18 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, .sheet:focus-visi
   .cheat { padding: 22px 18px 24px; }
   .overlay { padding-top: 40px; }
 }
+
+/* ---------- "Simpler version" note ---------- */
+.simpler-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pager { display: flex; align-items: center; gap: 6px; font-size: 22px; color: var(--rose); white-space: nowrap; }
+.arrow {
+  width: 34px; height: 34px; border: 2px solid var(--rose); border-radius: 50%; background: #fff;
+  font: 700 24px/1 var(--hand); color: var(--rose); cursor: pointer; padding: 0 0 3px;
+}
+.arrow:hover:not(:disabled) { background: var(--rose); color: #fff; }
+.arrow:disabled { opacity: 0.3; cursor: default; }
+.simpler-msg { margin: 6px 0 4px; font: 22px var(--hand); color: var(--ink-soft); display: flex; align-items: center; gap: 8px; }
+.simpler-from {
+  margin: 6px 0 4px; font-size: 17px; line-height: 1.35; color: var(--ink-soft);
+  text-decoration: line-through; text-decoration-color: rgba(176, 36, 90, 0.5);
+}
