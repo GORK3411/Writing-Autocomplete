@@ -35,7 +35,7 @@ export function PopAnchor({ id, open, onToggle, onClose, renderTrigger, note, ch
   );
 }
 
-function Popover({ title, titleColor, bg, width, onClose, children }) {
+export function Popover({ title, titleColor, bg, width, onClose, children }) {
   const ref = useRef(null);
 
   useEffect(() => {

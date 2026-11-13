@@ -58,24 +58,27 @@ function pseudoRandom(key) {
 }
 
 // Text inside "...", [...] or {...} (closed or still being typed) is about to be
-// replaced by features 1-3, so it is never highlighted.
-const TRIGGER_RE = /"[^"]*"?|\[[^\]]*\]?|\{[^}]*\}?/g;
-// A sentence = anything up to and including its end punctuation.
-const SENTENCE_RE = /[^.!?]+[.!?]*|[.!?]+/g;
-const WORD_RE = /\p{L}[\p{L}\p{M}'’-]*/gu;
+// replaced by features 1-3: it gets the blue "find" box, never a word highlight.
+const TRIGGER_SRC = String.raw`"[^"]*"?|\[[^\]]*\]?|\{[^}]*\}?`;
+const TRIGGER_KIND = { '"': "desc", "[": "lang", "{": "idiom" }; // features 1, 2, 3
+const TRIGGER_CLOSE = { '"': '"', "[": "]", "{": "}" };
+// A sentence = anything up to and including its end punctuation. A trigger counts as
+// one block, so a "." typed inside "..." doesn't end the sentence.
+const SENTENCE_RE = new RegExp(String.raw`(?:${TRIGGER_SRC}|[^.!?"\[{])+[.!?]*|[.!?]+`, "g");
+// Inside a sentence: a trigger (group 1) or a word (group 2).
+const TOKEN_RE = new RegExp(String.raw`(${TRIGGER_SRC})|(\p{L}[\p{L}\p{M}'’-]*)`, "gu");
 
 /**
  * Split the text into sentences and words with their highlight.
- * Returns [{ text, hardSentence, parts: [{ text, mark: 'err' | 'hard' | 'better' | null }] }].
- * Marked parts also carry `start` (offset in the text) and `fix` (the suggested replacement).
+ * Returns [{ text, hardSentence, parts: [{ text, mark: 'err' | 'hard' | 'better' | 'trig' | null }] }].
+ * Marked words also carry `start` (offset in the text) and `fix` (the suggested replacement).
+ * Trigger parts carry `start`, `kind` ('desc' | 'lang' | 'idiom') and `open` (closing
+ * bracket/quote not typed yet).
  * Joining every part's text gives back the original text exactly (the mirror relies on it).
  *
  * The word or sentence still being typed (at the very end) is not scored yet.
  */
 export function computeHighlights(text) {
-  const inTrigger = new Uint8Array(text.length);
-  for (const m of text.matchAll(TRIGGER_RE)) inTrigger.fill(1, m.index, m.index + m[0].length);
-
   const seen = new Map(); // word -> times seen so far
   const chunks = [];
   for (const s of text.matchAll(SENTENCE_RE)) {
@@ -93,11 +96,19 @@ export function computeHighlights(text) {
 
     const parts = [];
     let last = 0;
-    for (const w of body.matchAll(WORD_RE)) {
+    for (const w of body.matchAll(TOKEN_RE)) {
       const word = w[0];
+      if (w[1]) {
+        // Trigger: always boxed, even while still being typed.
+        const open = word.length === 1 || word.at(-1) !== TRIGGER_CLOSE[word[0]];
+        if (w.index > last) parts.push({ text: body.slice(last, w.index), mark: null });
+        parts.push({ text: word, mark: "trig", kind: TRIGGER_KIND[word[0]], open, start: bodyStart + w.index });
+        last = w.index + word.length;
+        continue;
+      }
       const end = bodyStart + w.index + word.length;
       const stillTyping = end === text.length;
-      if (stillTyping || inTrigger[bodyStart + w.index]) continue;
+      if (stillTyping) continue;
       const key = word.toLowerCase();
       const occurrence = seen.get(key) ?? 0;
       seen.set(key, occurrence + 1);
