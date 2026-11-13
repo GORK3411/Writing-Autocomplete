@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 /** The yellow "?" note: every trick on one page (board 7c). */
-export default function CheatSheet({ onClose, onReplay }) {
+export default function CheatSheet({ onClose }) {
   const closeRef = useRef(null);
 
   useEffect(() => {
@@ -53,9 +53,6 @@ export default function CheatSheet({ onClose, onReplay }) {
         <div className="row-btns" style={{ marginTop: 20, gap: 12 }}>
           <button className="tag" type="button" onClick={onClose}>
             got it
-          </button>
-          <button className="tag" type="button" onClick={onReplay} style={{ background: 'var(--note-blue)' }}>
-            open the practice page
           </button>
         </div>
       </section>

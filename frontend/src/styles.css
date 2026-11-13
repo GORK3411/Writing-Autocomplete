@@ -160,50 +160,20 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, .sheet:focus-visi
 }
 
 /* ---------- legend ---------- */
-.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 18px; font: 22px var(--hand); color: var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-bottom: 8px; font: 22px var(--hand); color: var(--ink); }
 .legend .k-find { border: 2px solid var(--blue); border-radius: 10px; padding: 0 6px; color: var(--blue); }
 .legend .k-err { text-decoration: underline wavy var(--mark-err); }
 .legend .k-better { background: var(--mark-better); padding: 0 4px; }
 .legend .k-hard { background: var(--mark-hard); padding: 0 4px; }
 .legend .k-sent { background: var(--mark-sent); padding: 0 4px; }
-.below-note { margin: 10px 0 0; font: 20px var(--hand); color: var(--ink-soft); }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.topbar .help-note { flex-shrink: 0; }
+.below-note { margin: 0; font: 20px var(--hand); color: var(--ink-soft); }
 
 /* ---------- sticky notes (sidebar) ---------- */
 .sticky { box-shadow: 0 10px 18px rgba(40, 70, 140, 0.18); padding: 18px 18px 20px; }
 .sticky h2 { margin: 0; font: 700 30px var(--hand); }
-.sticky .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.score { font: 700 40px var(--hand); color: var(--rose-strong); }
-.orig { margin: 8px 0 6px; font-size: 16px; line-height: 1.4; color: #5a4a58; }
-.orig b { font: 700 20px var(--hand); color: var(--rose); }
-.ver {
-  display: flex; gap: 8px; align-items: flex-start; width: 100%; border: 0; border-radius: 8px;
-  padding: 8px 10px; font: 18px/1.35 var(--print); color: var(--ink); text-align: left; cursor: pointer;
-  background: transparent;
-}
-.ver:hover { background: rgba(176, 36, 90, 0.08); }
-.ver[aria-checked='true'] { background: rgba(176, 36, 90, 0.14); }
-.ver .dot { font: 22px/1 var(--hand); color: var(--rose); }
-.ver .lbl { display: block; font: 700 18px/1.1 var(--hand); color: #8a2a5a; }
-.fix-list {
-  max-height: 340px; overflow-y: auto; border-top: 1.5px dashed var(--green); border-bottom: 1.5px dashed var(--green);
-  padding: 4px 4px 4px 0; display: flex; flex-direction: column;
-}
-.fix-row {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 19px;
-  padding: 4px 0; border-bottom: 1px solid rgba(29, 122, 68, 0.18);
-}
-.fix-row .lbl { font: 700 17px var(--hand); margin-right: 6px; }
-.fix-row .acts { display: flex; gap: 4px; flex-shrink: 0; }
-.clean { margin: 6px 0; font: 24px var(--hand); color: var(--green); }
-.hint { margin: 8px 0 0; font: 19px var(--hand); color: var(--ink-soft); }
 .sticky ol { margin: 6px 0 0; padding-left: 22px; font-size: 19px; line-height: 1.5; }
-
-/* ---------- practice page ---------- */
-.lesson { margin-bottom: 14px; }
-.lesson-instr { font: 700 22px/1.2 var(--hand); color: var(--rose); }
-.lesson-instr .ok { color: var(--green); }
-.welcome-sub { margin: 0 0 12px; font: 22px/1.3 var(--hand); color: var(--ink-soft); }
-.welcome-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 10px; line-height: 1.3; }
 
 /* ---------- blank page ---------- */
 .blank-label { display: block; font: 700 40px/48px var(--hand); color: var(--blue); }

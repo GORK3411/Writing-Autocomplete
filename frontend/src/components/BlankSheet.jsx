@@ -29,7 +29,6 @@ export default function BlankSheet({ text, onChange }) {
           spellCheck={false}
         />
       </article>
-      <p className="below-note">The grey hint disappears as soon as you type.</p>
     </>
   );
 }
