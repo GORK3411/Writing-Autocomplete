@@ -1,5 +1,19 @@
-fastapi>=0.115
-uvicorn[standard]>=0.30
-
-# data scripts (scripts/build_ngram.py)
-datasets>=3.0
+fastapi==0.139.0
+uvicorn==0.34.3
+pydantic==2.12.5
+httpx==0.28.1
+datasets==5.2.0
+fsspec==2026.9.0
+pyarrow==26.0.1
+torch==2.15.0
+transformers==5.23.0
+sentencepiece==0.2.1
+safetensors==0.8.0
+fastembed==0.9.1
+huggingface-hub==1.33.0
+scikit-learn==1.9.1
+nltk==3.10.4
+wordfreq==3.1.1
+lemminflect==0.2.3
+textstat==0.7.13
+symspellpy==6.9.0

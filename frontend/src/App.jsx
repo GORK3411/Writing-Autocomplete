@@ -4,18 +4,17 @@ import CheatSheet from "./components/CheatSheet.jsx";
 import { Legend } from "./components/Sheet.jsx";
 import {
   DifficultyNote,
-  LearnNote,
   QuickFixesNote,
   SimplerNote,
 } from "./components/Sidebar.jsx";
 import {
-  applyFixes,
   computeHighlights,
   highlightsNow,
   listFixes,
-  listHardSentences,
   overallDifficulty,
 } from "./highlights.js";
+import { applyEdits } from "./edits.js";
+import { simplify } from "./api.js";
 import { loadNgram, suggestNgram } from "./ngram.js";
 
 // localStorage can be unavailable (private mode) — never let it break the page.
@@ -23,7 +22,8 @@ function usePersisted(key, fallback) {
   const [value, setValue] = useState(() => {
     try {
       const v = localStorage.getItem("sw:" + key);
-      return v === null ? fallback : JSON.parse(v);
+      const saved = v === null ? fallback : JSON.parse(v);
+      return typeof saved === typeof fallback ? saved : fallback;
     } catch {
       return fallback;
     }
@@ -40,8 +40,7 @@ function usePersisted(key, fallback) {
 
 // The LLM runs only after the user stops typing for this long.
 const LLM_PAUSE_MS = 400;
-// The difficulty score is recalculated only after the user stops typing for this long.
-const DIFFICULTY_PAUSE_MS = 2000;
+const GRAMMAR_PAUSE_MS = 1200;
 // The backend checks (features 5-9) are called only after the user stops typing for this long.
 const HIGHLIGHT_PAUSE_MS = 300;
 
@@ -114,90 +113,104 @@ export default function App() {
   }, [text, llmSuggest]);
 
   // The LLM's word wins when it is for the current text; otherwise the instant n-gram word.
-  const suggestion = (llm.for === text && llm.value) || ngramSuggestion;
+  const llmWord = llm.for === text ? llm.value : "";
+  const suggestion = llmWord || ngramSuggestion;
 
   const acceptSuggestion = useCallback(() => {
     // A space after the word lets the user chain Tab presses word by word.
     setText((t) => t + suggestion + " ");
   }, [setText, suggestion]);
 
-  // ---- features 5, 7, 8, 9: highlights in the text + their quick fixes ----
-  // The checks are async: while they run, show what is already cached (highlightsNow),
-  // so the mirror always matches the current text and the trigger boxes never wait.
-  const [scored, setScored] = useState({ for: null, chunks: [] });
-  useEffect(() => {
-    let cancelled = false;
-    const id = setTimeout(() => {
-      computeHighlights(text)
-        .then((chunks) => !cancelled && setScored({ for: text, chunks }))
-        .catch((e) => console.error("[highlights]", e));
-    }, HIGHLIGHT_PAUSE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(id);
-    };
-  }, [text]);
-  const highlights = useMemo(
-    () => (scored.for === text ? scored.chunks : highlightsNow(text)),
-    [scored, text],
-  );
-  const fixes = useMemo(() => listFixes(highlights), [highlights]);
-  const applyFix = useCallback((list) => setText((t) => applyFixes(t, list)), [setText]);
-
-  // ---- feature 5: difficulty gauge = length-weighted average of the sentence scores ----
-  // Shows "Calculating…" while typing, until the text has been still for DIFFICULTY_PAUSE_MS
-  // and the backend has scored it.
-  const [settled, setSettled] = useState(text);
-  useEffect(() => {
-    const id = setTimeout(() => setSettled(text), DIFFICULTY_PAUSE_MS);
-    return () => clearTimeout(id);
-  }, [text]);
-  const difficulty = useMemo(() => overallDifficulty(scored.chunks), [scored]);
-  const calculating = settled !== text || scored.for !== text;
-
-  // ---- feature 6: "Simpler version" note, one pink sentence at a time ----
-  // Sentences the user kept ("nah") or that are the result of a swap are not offered again.
-  const [skipped, setSkipped] = useState(() => new Set());
-  const [hardSentences, setHardSentences] = useState([]);
-  useEffect(() => {
-    let cancelled = false;
-    listHardSentences(highlights, skipped)
-      .then((list) => !cancelled && setHardSentences(list))
-      .catch((e) => console.error("[simplify]", e));
-    return () => {
-      cancelled = true;
-    };
-  }, [highlights, skipped]);
+  const [revision, setRevision] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const [grammarChecking, setGrammarChecking] = useState(false);
+  const [checkError, setCheckError] = useState(null);
+  const [checkRequest, setCheckRequest] = useState(null);
+  const [undo, setUndo] = useState(null);
+  const [caret, setCaret] = useState(null);
   const [hardIndex, setHardIndex] = useState(0);
+  const [skipped, setSkipped] = useState(new Set());
+  const [preview, setPreview] = useState(null);
+  const update = () => setRevision((value) => value + 1);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const manual = checkRequest?.text === text;
+    setChecking(!!text.trim());
+    setGrammarChecking(!!text.trim());
+    setCheckError(null);
+    const report = async (mode) => {
+      const failed = await computeHighlights(text, mode, signal, update);
+      if (failed && !signal.aborted) setCheckError(text);
+    };
+    const light = setTimeout(async () => {
+      await report("light");
+      if (!signal.aborted) setChecking(false);
+    }, manual ? 0 : HIGHLIGHT_PAUSE_MS);
+    const grammar = setTimeout(async () => {
+      await report(manual ? "check" : "grammar");
+      if (!signal.aborted) setGrammarChecking(false);
+    }, manual ? 0 : GRAMMAR_PAUSE_MS);
+    return () => {
+      controller.abort();
+      clearTimeout(light);
+      clearTimeout(grammar);
+    };
+  }, [text, checkRequest]);
+
+  const highlights = useMemo(() => highlightsNow(text), [text, revision]);
+  const fixes = useMemo(() => listFixes(highlights), [highlights]);
+  const difficulty = useMemo(() => overallDifficulty(highlights), [highlights]);
+  const hardSentences = highlights.filter((chunk) => chunk.hardSentence && !chunk.triggers.length &&
+    !skipped.has(chunk.start + ":" + chunk.text));
   const current = Math.min(hardIndex, Math.max(hardSentences.length - 1, 0));
-  const [lastAction, setLastAction] = useState(null); // { type: 'swapped' | 'kept', item }
+  const selected = hardSentences[current];
 
-  const skip = (sentence, on) =>
-    setSkipped((s) => {
-      const next = new Set(s);
-      on ? next.add(sentence) : next.delete(sentence);
-      return next;
-    });
+  function applyFix(list) {
+    const next = applyEdits(text, list);
+    if (next === null || next === text) return;
+    setUndo({ before: text, after: next });
+    if (list.length === 1) setCaret({ position: list[0].start + list[0].to.length });
+    setPreview(null);
+    setText(next);
+  }
 
-  const swapSentence = (item) => {
-    setText((t) => applyFixes(t, [item]));
-    skip(item.to, true);
-    setLastAction({ type: "swapped", item });
-  };
-  const keepSentence = (item) => {
-    skip(item.from, true);
-    setLastAction({ type: "kept", item });
-  };
-  const undoLast = () => {
-    const { type, item } = lastAction;
-    if (type === "swapped") {
-      setText((t) => applyFixes(t, [{ start: item.start, from: item.to, to: item.from }]));
-      skip(item.to, false);
-    } else {
-      skip(item.from, false);
+  function changeDraft(next) {
+    setPreview(null);
+    setUndo(null);
+    setText(next);
+  }
+
+  function undoLast() {
+    if (undo?.after !== text) return;
+    setText(undo.before);
+    setUndo(null);
+  }
+
+  async function requestSimplification(chunk) {
+    const pending = { draft: text, start: chunk.start, status: "loading" };
+    setPreview(pending);
+    try {
+      const result = await simplify(chunk.text);
+      const status = result && result !== chunk.text ? "ready" : "empty";
+      setPreview((old) => old === pending ? { ...pending, status, result } : old);
+    } catch {
+      setPreview((old) => old === pending ? { ...pending, status: "error" } : old);
     }
-    setLastAction(null);
-  };
+  }
+
+  function applyRewrite(chunk) {
+    if (!currentPreview?.result) return;
+    applyFix([{ start: chunk.start, from: chunk.text, to: currentPreview.result,
+      sentence: chunk.text, sentenceStart: chunk.start }]);
+  }
+
+  function keepOriginal(chunk) {
+    setSkipped((previous) => new Set([...previous, chunk.start + ":" + chunk.text]));
+  }
+
+  const currentPreview = preview?.draft === text && preview?.start === selected?.start ? preview : null;
 
   return (
     <div className="page">
@@ -232,30 +245,39 @@ export default function App() {
           <main className="main">
             <BlankSheet
               text={text}
-              onChange={setText}
+              onChange={changeDraft}
               suggestion={suggestion}
+              suggestionSource={llmWord ? "distilgpt2" : "ngram"}
               onAccept={acceptSuggestion}
               highlights={highlights}
-              currentSentence={hardSentences[current]?.start}
+              currentSentence={selected?.start}
+              onEdit={applyFix}
+              caret={caret}
             />
           </main>
           <aside className="aside" aria-label="Side notes">
-            {/*<LearnNote onOpenCheat={openCheat} />*/}
+            <div className="check-actions">
+              <button className="tag" type="button" disabled={!text.trim()}
+                onClick={() => setCheckRequest({ text })}>Check draft</button>
+              {undo?.after === text && <button className="chip grey" type="button" onClick={undoLast}>Undo last edit</button>}
+            </div>
+            {checkError === text &&
+              <p className="status-note" role="status">Some checks are unavailable. Check local setup and select Check draft to retry.</p>}
             <DifficultyNote
-              score={difficulty?.score ?? 0}
-              calculating={calculating}
-              hardest={difficulty ? `sentence ${difficulty.hardest} is the worst` : "nothing to score yet"}
+              score={difficulty?.score ?? null}
+              calculating={checking}
+              hardest={difficulty ? `sentence ${difficulty.hardest} is the hardest` : "nothing to score yet"}
             />
             <SimplerNote
               sentences={hardSentences}
               index={current}
               onIndex={setHardIndex}
-              onSwap={swapSentence}
-              onKeep={keepSentence}
-              lastAction={lastAction}
-              onUndo={undoLast}
+              preview={currentPreview}
+              onPreview={requestSimplification}
+              onSwap={applyRewrite}
+              onKeep={keepOriginal}
             />
-            <QuickFixesNote fixes={fixes} onFix={applyFix} />
+            <QuickFixesNote fixes={fixes} onFix={applyFix} checking={checking || grammarChecking} unavailable={checkError === text} />
           </aside>
         </div>
       </div>

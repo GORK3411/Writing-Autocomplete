@@ -6,6 +6,7 @@
 // The candidates come from the backend (backend/app/features/describe.py, translate.py,
 // idiom.py). The popup (loading state, picking) does not need to change.
 
+import { codePointOffsets } from "./edits.js";
 import * as api from "./api.js";
 
 const ENDPOINT = { desc: api.describe, lang: api.translate, idiom: api.idiom };
@@ -20,12 +21,12 @@ export const TRIGGER_TITLE = {
 /**
  * Candidates for the text inside a trigger, best first.
  * `query` = text between the quotes/brackets, `sentence` = the whole sentence (context
- * for the masked-LM reranking). Resolves to [[word, score 0..1], ...].
+ * for contextual ranking). The offset is converted before the request.
  */
-export async function suggestForTrigger(kind, query, sentence) {
-  if (!query.trim() || !ENDPOINT[kind]) return [];
-  const candidates = await ENDPOINT[kind](query, sentence);
-  return candidates.map((c) => [c.text, c.score]);
+export async function suggestForTrigger(kind, query, sentence, triggerStart) {
+  if (!query.trim() || !Object.hasOwn(ENDPOINT, kind)) return [];
+  const offset = codePointOffsets(sentence).indexOf(triggerStart);
+  return ENDPOINT[kind](query, sentence, offset < 0 ? undefined : offset);
 }
 
 /** Text between the opening and (optional) closing quote/bracket. */
@@ -39,7 +40,7 @@ export function triggerAt(chunks, pos) {
     for (const p of c.parts) {
       // Inclusive end: clicking right after the closing bracket still counts.
       if (p.mark === "trig" && pos >= p.start && pos <= p.start + p.text.length) {
-        return { ...p, sentence: c.text };
+        return { ...p, sentence: c.text, sentenceStart: c.start };
       }
     }
   }

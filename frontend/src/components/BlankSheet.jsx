@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { countWords, Holes, todayLabel } from './Sheet.jsx';
-import { Options, Popover } from './Popover.jsx';
+import { Popover } from './Popover.jsx';
+import { spanToEdit } from '../edits.js';
 import { suggestForTrigger, TRIGGER_TITLE, triggerAt, triggerQuery } from '../triggers.js';
 
 const PLACEHOLDER = `Start writing…
@@ -8,7 +9,8 @@ const PLACEHOLDER = `Start writing…
 Stuck on a word? Try:
    "describe the word"    [mot français / كلمة عربية]    {an idea → idiom}
 
-Grey text = a suggestion. Press Tab to keep it.`;
+Grey text = a suggestion. Press Tab to keep it.
+Click a word box or use Alt+Enter to look it up.`;
 
 /**
  * Empty page with the grey first-time hint (board 7c).
@@ -19,12 +21,12 @@ Grey text = a suggestion. Press Tab to keep it.`;
  * paints the highlight backgrounds (yellow / blue / pink), which show through the
  * transparent textarea right under the matching words.
  */
-export default function BlankSheet({ text, onChange, suggestion = '', onAccept, highlights = [], currentSentence }) {
+export default function BlankSheet({ text, onChange, suggestion = '', suggestionSource, onAccept, highlights = [], currentSentence, caret, onEdit }) {
   const ref = useRef(null);
   const fieldRef = useRef(null);
   const mirrorRef = useRef(null);
   const [caretAtEnd, setCaretAtEnd] = useState(true);
-  const trig = useTriggerPopup({ text, onChange, highlights, textareaRef: ref, fieldRef, mirrorRef });
+  const trig = useTriggerPopup({ text, onEdit, highlights, textareaRef: ref, fieldRef, mirrorRef });
 
   const trackCaret = (el) =>
     setCaretAtEnd(el.selectionStart === el.selectionEnd && el.selectionEnd === el.value.length);
@@ -36,10 +38,23 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept, 
     el.style.height = el.scrollHeight + 'px';
   }, [text]);
 
+  useLayoutEffect(() => {
+    if (!caret) return;
+    ref.current.focus();
+    ref.current.setSelectionRange(caret.position, caret.position);
+    trackCaret(ref.current);
+  }, [caret]);
+
   // Only when typing at the end: a suggestion in the middle of the text would cover words.
   const ghost = text && caretAtEnd ? suggestion : '';
 
   const onKeyDown = (e) => {
+    if (e.nativeEvent.isComposing) return;
+    if (e.key === 'Enter' && e.altKey) {
+      e.preventDefault();
+      trig.openAtCaret(e.currentTarget);
+      return;
+    }
     if (e.key === 'Tab' && ghost && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
       e.preventDefault(); // keep focus in the editor
       onAccept?.();
@@ -59,7 +74,7 @@ export default function BlankSheet({ text, onChange, suggestion = '', onAccept, 
         <div className="blank-field" ref={fieldRef}>
           <div className="blank-mirror" aria-hidden="true" ref={mirrorRef}>
             <Highlighted chunks={highlights} current={currentSentence} />
-            <span className="ghost">{ghost}</span>
+            <span className="ghost" data-source={ghost ? suggestionSource : undefined}>{ghost}</span>
           </div>
           <textarea
             ref={ref}
@@ -113,22 +128,21 @@ function Highlighted({ chunks, current }) {
  * Features 1-3: click inside a "..." / [...] / {...} box -> sticky note with words to
  * replace the whole box with. Returns the textarea click handler and the popup element.
  */
-function useTriggerPopup({ text, onChange, highlights, textareaRef, fieldRef, mirrorRef }) {
+function useTriggerPopup({ text, onEdit, highlights, textareaRef, fieldRef, mirrorRef }) {
   const [open, setOpen] = useState(null); // { start, text, kind, left, top, height, options|null }
   const popRef = useRef(null);
-  const caretAfterPick = useRef(null);
+  const lastRequest = useRef(0);
 
   const close = (refocus) => {
     setOpen(null);
     if (refocus) textareaRef.current?.focus();
   };
 
-  const onClick = (e) => {
-    const el = e.target;
+  const openAtCaret = (el) => {
     if (el.selectionStart !== el.selectionEnd) return;
     const part = triggerAt(highlights, el.selectionStart);
-    if (!part) return setOpen(null);
-    if (open && open.start === part.start) return; // already showing this one
+    if (!part || part.open) return setOpen(null);
+    if (open && open.draft === text && open.start === part.start && !open.error) return; // already showing this one
 
     // Place the note under the box, using its span in the mirror.
     const span = mirrorRef.current?.querySelector(`[data-start="${part.start}"]`);
@@ -137,22 +151,17 @@ function useTriggerPopup({ text, onChange, highlights, textareaRef, fieldRef, mi
     const field = fieldRef.current.getBoundingClientRect();
     const first = rects[0];
     const last = rects[rects.length - 1];
-    const pos = { left: first.left - field.left, top: last.top - field.top, height: last.height };
+    const pos = { left: Math.max(0, Math.min(first.left - field.left, field.width - 260)), top: last.top - field.top, height: last.height };
 
-    const next = { start: part.start, text: part.text, kind: part.kind, ...pos, options: null };
+    const id = ++lastRequest.current;
+    const next = { ...part, ...pos, id, draft: text, options: null };
     setOpen(next);
-    suggestForTrigger(part.kind, triggerQuery(part), part.sentence)
-      .then((options) =>
-        setOpen((cur) => (cur && cur.start === next.start && cur.text === next.text ? { ...cur, options } : cur)),
-      )
-      .catch((err) => {
-        console.error('[trigger]', err);
-        setOpen((cur) => (cur && cur.start === next.start ? { ...cur, options: [] } : cur));
-      });
+    suggestForTrigger(part.kind, triggerQuery(part), part.sentence, part.start - part.sentenceStart)
+      .then((options) => setOpen((cur) => cur?.id === id ? { ...cur, options } : cur))
+      .catch(() => setOpen((cur) => cur?.id === id ? { ...cur, error: true } : cur));
   };
 
-  // The text changed under the box (typing, Tab, quick fix): the note is stale.
-  const stale = open && text.slice(open.start, open.start + open.text.length) !== open.text;
+  const stale = open && open.draft !== text;
   useEffect(() => {
     if (stale) setOpen(null);
   }, [stale]);
@@ -168,22 +177,13 @@ function useTriggerPopup({ text, onChange, highlights, textareaRef, fieldRef, mi
     return () => document.removeEventListener('mousedown', onDown);
   }, [open, textareaRef]);
 
-  const pick = (word) => {
-    const end = open.start + open.text.length;
-    caretAfterPick.current = open.start + word.length;
-    onChange(text.slice(0, open.start) + word + text.slice(end));
+  const pick = (candidate) => {
+    if (open.draft !== text) return close(true);
+    const edit = candidate.edit ? spanToEdit(open.sentence, candidate.edit, open.sentenceStart) :
+      { start: open.start, from: open.text, to: candidate.text, sentence: open.sentence, sentenceStart: open.sentenceStart };
+    if (edit) onEdit([edit]);
     setOpen(null);
   };
-
-  // Put the caret right after the inserted word once the new text is rendered.
-  useLayoutEffect(() => {
-    const pos = caretAfterPick.current;
-    if (pos === null) return;
-    caretAfterPick.current = null;
-    const el = textareaRef.current;
-    el.focus();
-    el.setSelectionRange(pos, pos);
-  }, [text, textareaRef]);
 
   const popup =
     open && !stale ? (
@@ -199,16 +199,22 @@ function useTriggerPopup({ text, onChange, highlights, textareaRef, fieldRef, mi
           bg="var(--note-blue)"
           onClose={close}
         >
-          {open.options === null ? (
+          {open.error ? (
+            <span className="pop-hand">Word lookup unavailable. Check the local server and try again.</span>
+          ) : open.options === null ? (
             <span className="pop-hand">looking for words…</span>
           ) : open.options.length ? (
-            <Options options={open.options.map(([w, s]) => [w, Math.round(s * 100) + '%'])} onPick={pick} />
+            open.options.map((candidate) => (
+              <button key={candidate.text} data-opt className="opt" type="button" onClick={() => pick(candidate)}>
+                {candidate.edit?.suggestion ?? candidate.text}
+              </button>
+            ))
           ) : (
-            <span className="pop-hand">no idea yet — try describing it differently</span>
+            <span className="pop-hand">No matching suggestions. Try another description or word.</span>
           )}
         </Popover>
       </span>
     ) : null;
 
-  return { onClick, popup };
+  return { onClick: (event) => openAtCaret(event.currentTarget), openAtCaret, popup };
 }

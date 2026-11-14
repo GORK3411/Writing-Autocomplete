@@ -1,54 +1,35 @@
 # Backend
 
-FastAPI server for the NLP features.
+Use the root Windows setup to prepare the Python 3.12 environment and local assets. For development, run the commands from this directory.
 
-## Setup
+    .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+    .\.venv\Scripts\python.exe -m unittest discover -s tests
+    .\.venv\Scripts\python.exe -m tests.evaluate_demo
 
-```bash
-cd backend
-python -m venv .venv
-# Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-```
+The browser normally calls relative /api URLs. FastAPI serves the compiled frontend from frontend/dist when that directory exists. The development frontend uses the Vite proxy.
 
-## Run
+| Endpoint | Body | Result |
+| --- | --- | --- |
+| /api/describe | query, sentence, optional trigger_start | candidates |
+| /api/translate | query, sentence, optional trigger_start | candidates |
+| /api/idiom | query, sentence, optional trigger_start | candidates |
+| /api/difficulty | sentence | score and hard |
+| /api/simplify | sentence | simplified |
+| /api/hard-words | sentence | spans |
+| /api/better-words | sentence | spans |
+| /api/grammar | sentence, optional thorough | spans |
 
-```bash
-uvicorn app.main:app --reload
-```
+All eight routes accept JSON POST requests up to 32 KiB. Use 127.0.0.1 or localhost. A model queue at capacity returns 503 with Retry-After. Validation responses omit submitted draft text. Candidates have text, a 0–1 match score, and an optional edit for contextual replacement. Edits and spans use zero-based Python string offsets into the supplied sentence. The end is exclusive, insertions have an empty source slice, and deletions have an empty suggestion. The browser converts indices to UTF-16. A grammar request with thorough=false runs the spelling pass only. Omit the field to include grammar.
 
-- Health check: http://127.0.0.1:8000/health
-- Interactive API docs: http://127.0.0.1:8000/docs
+GET /health confirms the process is responding. GET /ready checks that the classroom bundle and assets exist. API docs are available at /docs. Browser autocomplete has no Python endpoint.
 
-The frontend dev server forwards `/api` to port 8000, so start both.
+The generated n-gram table uses the first 20 million words from the WikiText-103 training shard. You can run the existing builder on a small text file with python scripts/build_ngram.py --text-file corpus.txt --out table.json for an isolated experiment.
 
-## Endpoints
+For the browser rehearsal, install playwright==1.56.0 into the venv, run the classroom server, then run python tests/rehearse_browser.py. The rehearsal uses installed Chrome and blocks non-local browser requests.
 
-All are `POST`, JSON in and out. Routes are in `app/api.py`, shapes in `app/schemas.py`.
-To connect a model, edit **only the function in `app/features/`**; everything currently
-returns dummy values.
+### Repeat the verification
 
-| # | Endpoint | Body | Returns | Edit |
-|---|---|---|---|---|
-| 1 | `/api/describe` | `{query, sentence}` | `{candidates: [{text, score}]}` | `features/describe.py` → `describe_to_words` |
-| 2 | `/api/translate` | `{query, sentence}` | `{candidates: [{text, score}]}` | `features/translate.py` → `translate_word` |
-| 3 | `/api/idiom` | `{query, sentence}` | `{candidates: [{text, score}]}` | `features/idiom.py` → `find_idioms` |
-| 5 | `/api/difficulty` | `{sentence}` | `{score: 0-100, hard}` | `features/difficulty.py` → `score_sentence` |
-| 6 | `/api/simplify` | `{sentence}` | `{simplified}` | `features/simplify.py` → `simplify_sentence` |
-| 7 | `/api/hard-words` | `{sentence}` | `{spans: [{start, end, text, suggestion}]}` | `features/hard_words.py` → `find_hard_words` |
-| 8 | `/api/better-words` | `{sentence}` | `{spans: [...]}` | `features/better_words.py` → `find_better_words` |
-| 9 | `/api/grammar` | `{sentence}` | `{spans: [...]}` | `features/grammar.py` → `find_errors` |
-
-Feature 4 (autocomplete) runs in the browser and has no endpoint.
-Span offsets are Python string indices into the sentence: `sentence[start:end] == text`.
-
-## Build the next-word table (feature 4)
-
-The ghost-text autocomplete uses an n-gram table built from WikiText-103.
-It's generated (not committed), so build it once after cloning:
-
-```bash
-python scripts/build_ngram.py   # writes frontend/public/ngram.json (~5 MB, a few minutes)
-```
-
-`python scripts/build_ngram.py --help` lists the options (corpus size, vocabulary, your own text files).
+- Run backend regression and real-model coverage with `python -m coverage run --branch --source=app -m unittest discover -s tests`, then `python -m coverage run --append --branch --source=app -m tests.evaluate_demo` and `python -m coverage report`.
+- From the frontend directory, run `node --test --experimental-test-coverage tests/*.test.js` and `npm run build`.
+- With the packaged server running, run the browser rehearsal above. This tests both autocomplete engines, model inference, edit and undo, persistence, keyboard help, recovery from an unavailable endpoint, and a narrow viewport.
+- For dependency checks, run `python -m pip check`, `python -m pip_audit`, and `npm audit` in the appropriate environments. Coverage, pip-audit, and Playwright are verification tools.

@@ -2,12 +2,26 @@ import { useEffect, useRef } from 'react';
 
 /** The yellow "?" note: every trick on one page (board 7c). */
 export default function CheatSheet({ onClose }) {
+  const dialogRef = useRef(null);
   const closeRef = useRef(null);
 
   useEffect(() => {
     const prev = document.activeElement;
     closeRef.current?.focus();
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    const onKey = (event) => {
+      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Tab') return;
+      const buttons = dialogRef.current.querySelectorAll('button');
+      const first = buttons[0];
+      const last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
     document.addEventListener('keydown', onKey);
     return () => {
       document.removeEventListener('keydown', onKey);
@@ -17,7 +31,7 @@ export default function CheatSheet({ onClose }) {
 
   return (
     <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <section role="dialog" aria-modal="true" aria-labelledby="cs-title" className="cheat">
+      <section ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="cs-title" className="cheat">
         <button ref={closeRef} className="x" type="button" aria-label="Close cheat sheet" onClick={onClose} style={{ top: 10, right: 12 }}>
           ×
         </button>
@@ -35,7 +49,7 @@ export default function CheatSheet({ onClose }) {
             <Row k={<span className="kbd">Tab</span>} what="Accept the grey suggestion" ex={<>The results show that the <span className="ghost">new method works</span></>} />
             <h3 style={{ color: 'var(--rose)', marginTop: 14 }}>Keep it easy to read</h3>
             <Row k={<b>gauge</b>} what="Live score, easy → hard (top of the side notes)" />
-            <Row k={<b style={{ background: 'var(--mark-sent)' }}>pink</b>} what="Click a hard sentence to simplify" ex={<>Notwithstanding the ramifications… → <b>Despite the consequences…</b></>} />
+            <Row k={<b style={{ background: 'var(--mark-sent)' }}>pink</b>} what="Choose Simplify sentence in the side note" ex={<>Notwithstanding the ramifications… → <b>Despite the consequences…</b></>} />
             <Row k={<b style={{ background: 'var(--mark-hard)' }}>yellow</b>} what="Hard word → simpler word" ex={<>We will utilize → We will <b>use</b></>} />
           </div>
           <div>
@@ -44,7 +58,8 @@ export default function CheatSheet({ onClose }) {
             <Row k={<b style={{ textDecoration: 'underline wavy var(--mark-err)' }}>red</b>} what="Spelling & grammar" ex={<>She go to school every days → She <b>goes</b> … every <b>day</b></>} />
           </div>
           <div>
-            <h3>Keys inside a note</h3>
+            <h3>Keyboard controls</h3>
+            <Row k={<><span className="kbd">Alt</span> + <span className="kbd">Enter</span></>} what="Look up the word box at the cursor" />
             <Row k={<span className="kbd">Enter</span>} what="Pick the top choice" />
             <Row k={<><span className="kbd">↑</span> <span className="kbd">↓</span></>} what="Choose another option" />
             <Row k={<span className="kbd">Esc</span>} what="Close it, keep what you typed" />

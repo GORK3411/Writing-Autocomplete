@@ -1,38 +1,13 @@
-// Side notes beside the page (board 7).
-
-/** Side note shown beside the page. */
-export function LearnNote({ onOpenCheat }) {
-  return (
-    <section className="sticky" style={{ background: 'var(--note-blue)', transform: 'rotate(1deg)' }}>
-      <h2 style={{ color: 'var(--blue)', marginBottom: 6 }}>How it works</h2>
-      <ol>
-        <li>
-          Put a description in <b>"quotes"</b>, a French or Arabic word in <b>[brackets]</b>, or an idea in <b>{'{curly brackets}'}</b>
-        </li>
-        <li>
-          Grey text is a suggestion: press <span className="kbd">Tab</span> to keep it
-        </li>
-        <li>Click any colored word to see a fix</li>
-      </ol>
-      <button className="tag" type="button" style={{ marginTop: 12 }} onClick={onOpenCheat}>
-        open the cheat sheet
-      </button>
-    </section>
-  );
-}
-
-// ---- Placeholder notes (board 7). Dummy data until features 5, 6 and 9 are connected. ----
-
 /**
  * Feature 5: live difficulty gauge. `score` is 0 (easy) … 100 (hard).
  * While `calculating` (user is typing), the score is replaced by "Calculating…".
  */
-export function DifficultyNote({ score = 62, calculating = false, hardest = 'sentence 6 is the worst' }) {
+export function DifficultyNote({ score = null, calculating = false, hardest = '' }) {
   const markX = 10 + (score / 100) * 260;
   const level = score >= 60 ? 'fairly hard' : score >= 48 ? 'okay' : 'nice and easy';
   return (
     <section className="sticky" style={{ background: 'var(--note-blue)', transform: 'rotate(1.5deg)' }}>
-      <h2 style={{ color: 'var(--blue)' }}>How hard is it?</h2>
+      <h2 style={{ color: 'var(--blue)' }}>Readability estimate</h2>
       <svg viewBox="0 0 280 70" width="100%" role="img" aria-label={calculating ? 'Difficulty: calculating' : `Difficulty: ${score} out of 100, ${level}`} style={{ marginTop: 6 }}>
         <path d="M8 36 C 70 30, 150 42, 272 34" stroke="var(--ink)" strokeWidth="3" fill="none" strokeLinecap="round" />
         <line x1="10" y1="36" x2={markX} y2="36" stroke="#f08a4b" strokeWidth="12" strokeLinecap="round" opacity=".75" />
@@ -43,6 +18,8 @@ export function DifficultyNote({ score = 62, calculating = false, hardest = 'sen
       <p style={{ margin: '4px 0 0', fontSize: 20 }} aria-live="polite">
         {calculating ? (
           <b className="hand" style={{ fontSize: 40, color: 'var(--rose-strong)' }}>Calculating…</b>
+        ) : score === null ? (
+          <span>Finish a sentence to see its score.</span>
         ) : (
           <>
             <b className="hand" style={{ fontSize: 40, color: 'var(--rose-strong)' }}>{score}</b> {level} — {hardest}
@@ -53,12 +30,8 @@ export function DifficultyNote({ score = 62, calculating = false, hardest = 'sen
   );
 }
 
-/**
- * Feature 6: simpler rewrite of the pink sentences, one at a time.
- * `sentences` = [{ start, from, to }] in text order; ‹ › arrows switch between them.
- * `lastAction` = { type: 'swapped' | 'kept', item } -> small message with an undo.
- */
-export function SimplerNote({ sentences = [], index = 0, onIndex, onSwap, onKeep, lastAction, onUndo }) {
+/** Feature 6 requests a preview only when the writer clicks Simplify. */
+export function SimplerNote({ sentences, index, onIndex, preview, onPreview, onSwap, onKeep }) {
   const item = sentences[index];
   const count = sentences.length;
   return (
@@ -92,26 +65,23 @@ export function SimplerNote({ sentences = [], index = 0, onIndex, onSwap, onKeep
         )}
       </div>
 
-      {lastAction && (
-        <p className="simpler-msg">
-          {lastAction.type === 'swapped' ? 'Swapped!' : 'Kept your sentence.'}{' '}
-          <button className="chip grey" type="button" onClick={onUndo}>
-            ↶ undo
-          </button>
-        </p>
-      )}
-
       {item ? (
         <>
-          <p className="simpler-from">{item.from}</p>
-          <p style={{ margin: '0 0 12px', fontSize: 20, lineHeight: 1.4 }}>→ {item.to}</p>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="tag" type="button" onClick={() => onSwap?.(item)}>swap it</button>
-            <button className="tag flat" type="button" onClick={() => onKeep?.(item)}>nah</button>
+          <p className="simpler-from">{item.text}</p>
+          {preview?.status === "ready" && <p className="simpler-result">{preview.result}</p>}
+          {preview?.status === "loading" && <p role="status">Preparing a simpler version…</p>}
+          {preview?.status === "empty" && <p role="status">No simpler version passed the readability and preservation checks.</p>}
+          {preview?.status === "error" && <p role="status">The simplification model is unavailable.</p>}
+          <div className="check-actions">
+            {preview?.status === "ready"
+              ? <button className="tag" type="button" onClick={() => onSwap(item)}>Apply rewrite</button>
+              : <button className="tag" type="button" disabled={preview?.status === "loading"}
+                  onClick={() => onPreview(item)}>Simplify sentence</button>}
+            <button className="tag flat" type="button" onClick={() => onKeep(item)}>Keep original</button>
           </div>
         </>
       ) : (
-        <p className="hand" style={{ margin: '4px 0 0', fontSize: 24, color: 'var(--rose)' }}>nothing hard to read ✓</p>
+        <p className="hand" style={{ margin: '4px 0 0', fontSize: 24, color: 'var(--rose)' }}>No hard sentence to simplify.</p>
       )}
     </section>
   );
@@ -123,7 +93,7 @@ const MARK_CLASS = { err: 'k-err', hard: 'k-hard', better: 'k-better' };
  * Feature 9 (+7/8): one-click corrections for every red / yellow / blue word.
  * `fixes` = [{ start, from, to, mark }]; `onFix(list)` applies them to the text.
  */
-export function QuickFixesNote({ fixes = [], onFix }) {
+export function QuickFixesNote({ fixes = [], onFix, checking, unavailable }) {
   return (
     <section className="sticky fixes" style={{ background: 'var(--note-green)', transform: 'rotate(1deg)' }}>
       <h2 style={{ color: 'var(--green)', marginBottom: 6 }}>Quick fixes · {fixes.length}</h2>
@@ -131,7 +101,7 @@ export function QuickFixesNote({ fixes = [], onFix }) {
         {fixes.map((f) => (
           <div key={f.start} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: 20 }}>
             <span>
-              <span className={MARK_CLASS[f.mark]}>{f.from}</span> → <b>{f.to}</b>
+              <span className={MARK_CLASS[f.mark]}>{f.from || 'Insert'}</span> → <b>{f.to || 'Delete'}</b>
             </span>
             <button className="chip green" type="button" onClick={() => onFix?.([f])} aria-label={`Fix ${f.from} to ${f.to}`}>
               fix
@@ -141,10 +111,10 @@ export function QuickFixesNote({ fixes = [], onFix }) {
       </div>
       {fixes.length > 0 ? (
         <button className="tag" type="button" style={{ marginTop: 10 }} onClick={() => onFix?.(fixes)}>
-          fix them all
+          Apply all fixes
         </button>
       ) : (
-        <p className="hand" style={{ margin: '4px 0 0', fontSize: 24, color: 'var(--green)' }}>all clean ✓</p>
+        <p className="hand" style={{ margin: '4px 0 0', fontSize: 24, color: 'var(--green)' }}>{checking ? 'Checking…' : unavailable ? 'Some checks are unavailable.' : 'No fixes to review.'}</p>
       )}
     </section>
   );

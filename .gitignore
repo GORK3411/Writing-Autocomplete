@@ -225,3 +225,15 @@ node_modules/
 
 # Generated n-gram table (build with backend/scripts/build_ngram.py)
 frontend/public/ngram.json
+
+# Downloaded assets and generated classroom build
+data/
+models/
+checkpoints/
+frontend/public/ort/
+frontend/public/fonts/
+*.onnx
+*.safetensors
+*.pt
+*.bin
+*.part

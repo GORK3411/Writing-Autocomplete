@@ -245,3 +245,21 @@ button:focus-visible, a:focus-visible, textarea:focus-visible, .sheet:focus-visi
   margin: 6px 0 4px; font-size: 17px; line-height: 1.35; color: var(--ink-soft);
   text-decoration: line-through; text-decoration-color: rgba(176, 36, 90, 0.5);
 }
+
+@font-face {
+  font-family: Caveat;
+  src: url('/fonts/caveat.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Patrick Hand';
+  src: url('/fonts/patrick-hand.woff2') format('woff2');
+  font-display: swap;
+}
+.check-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.status-note { color: var(--ink); font-size: 18px; margin: 0; }
+.simpler-result { margin: 0 0 12px; font-size: 20px; line-height: 1.4; }
+button:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.trig-anchor .pop { max-width: min(260px, calc(100vw - 42px)); }
+.fixes-list { overflow-wrap: anywhere; }

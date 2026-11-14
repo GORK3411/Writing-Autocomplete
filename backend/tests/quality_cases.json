@@ -1,0 +1,41 @@
+{
+  "retrieval": [
+    ["describe", "a writer of novels", "She became \"a writer of novels\".", ["novelist", "author", "writer"]],
+    ["describe", "someone who studies birds", "She is \"someone who studies birds\".", ["ornithologist"]],
+    ["describe", "a person who makes maps", "I hired \"a person who makes maps\".", ["cartographer", "mapmaker"]],
+    ["describe", "a doctor who operates on patients", "", ["surgeon"]],
+    ["describe", "qzvxblorbit", "", []],
+    ["translate", "fatigué", "I feel [fatigué] after a long shift.", ["tired"]],
+    ["translate", "fatigue", "I feel [fatigue].", ["tired", "fatigue"]],
+    ["translate", "كِتاب", "I read a [كِتاب].", ["book"]],
+    ["translate", "مَدْرَسَة", "They built a [مَدْرَسَة] for the children.", ["school"]],
+    ["translate", "livre", "She borrowed a [livre] from the library to read.", ["book"]],
+    ["translate", "livre", "A British [livre] is a unit of currency.", ["pound"]],
+    ["translate", "qzvxblorbit", "", []],
+    ["idiom", "something very easy", "The exam was {something very easy}.", ["a piece of cake", "a walk in the park"]],
+    ["idiom", "make peace after a fight", "They decided to {make peace after a fight}.", ["bury the hatchet"]],
+    ["idiom", "keep talking without getting to the main point", "", ["beat around the bush"]],
+    ["idiom", "stop trying because you give up", "", ["throw in the towel"]],
+    ["idiom", "qzvxblorbit", "", []]
+  ],
+  "difficulty": [
+    ["The dog ran home.", "The interdisciplinary collaboration necessitated substantial organizational restructuring."],
+    ["She put the cup on the table.", "The comprehensive environmental evaluation revealed considerable methodological deficiencies."]
+  ],
+  "grammar": [
+    ["I has a apple.", "I have an apple."],
+    ["She went school yesterday.", "She went to school yesterday."],
+    ["I saw the the dog.", "I saw the dog."],
+    ["She definately agrees.", "She definitely agrees."],
+    ["The dog ran home.", "The dog ran home."],
+    ["They bought 12 books yesterday.", "They bought 12 books yesterday."],
+    ["We should not cancel the meeting.", "We should not cancel the meeting."],
+    ["Dr. Smith read the report.", "Dr. Smith read the report."]
+  ],
+  "simplify": [
+    ["The committee utilized complicated terminology to describe the implementation process.", "The group used complex words to explain how the plan was put into practice."],
+    ["Notwithstanding the financial repercussions of relocation, the ultimate determination was predicated upon fiscal considerations.", "Despite the financial effects of moving, the final decision was based on money."],
+    ["The librarian subsequently commenced the organization of the 12 publications.", "The librarian then began organizing the 12 books."],
+    ["The organization did not authorize additional expenditures.", "The organization did not allow extra spending."]
+  ]
+}

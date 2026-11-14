@@ -1,22 +1,12 @@
-"""Feature 3: idiom finder.
-
-{something very easy}  ->  a piece of cake
-
-Planned: the same embedding search engine as feature 1, on Wiktionary idiom definitions.
-"""
+"""Feature 3. Rank idiom definitions against the requested meaning."""
 
 from app.schemas import Candidate
-
-# DUMMY data until the idiom search is ready.
-_DEMO = {
-    "something very easy": [("a piece of cake", 0.93), ("a walk in the park", 0.86), ("child's play", 0.7)],
-}
+from app.search import search, trigger_match
+from app.lexical import match_case
 
 
-def find_idioms(query: str, sentence: str) -> list[Candidate]:
-    """Idioms meaning `query`, best first.
-
-    `sentence` is the whole sentence (with the {...} still inside), for reranking.
-    """
-    found = _DEMO.get(query.strip().lower(), [("NLP", 0.5)])
-    return [Candidate(text=t, score=s) for t, s in found]
+def find_idioms(query: str, sentence: str, trigger_start: int | None = None) -> list[Candidate]:
+    match = trigger_match(query, sentence, trigger_start, "{")
+    capital = match is not None and not sentence[:match.start()].strip()
+    return [Candidate(text=match_case("Example", word) if capital else word, score=score)
+            for word, score in search(query, sentence, "idiom")]

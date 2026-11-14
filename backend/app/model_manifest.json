@@ -1,0 +1,118 @@
+{
+  "minilm": {
+    "repo": "Qdrant/all-MiniLM-L6-v2-onnx",
+    "revision": "d13954661f83248295ba75c1ed411eef3b7b936e",
+    "files": {
+      "config.json": {
+        "sha256": "1b4d8e2a3988377ed8b519a31d8d31025a25f1c5f8606998e8014111438efcd7",
+        "size": 650
+      },
+      "tokenizer.json": {
+        "sha256": "851ca67100d372ca3ae031a6abd168f53489eebfd7d89523f35c5c9b4d372c3c",
+        "size": 711649
+      },
+      "tokenizer_config.json": {
+        "sha256": "abda01c8c14c5151ae498aceb30db406d6b91242c394fd88d3b6fd5a63a101e6",
+        "size": 1412
+      },
+      "special_tokens_map.json": {
+        "sha256": "5d5b662e421ea9fac075174bb0688ee0d9431699900b90662acd44b2a350503a",
+        "size": 695
+      },
+      "vocab.txt": {
+        "sha256": "07eced375cec144d27c900241f3e339478dec958f92fddbc551f295c992038a3",
+        "size": 231508
+      },
+      "model.onnx": {
+        "sha256": "bbd7b466f6d58e646fdc2bd5fd67b2f5e93c0b687011bd4548c420f7bd46f0c5",
+        "size": 90387630
+      }
+    }
+  },
+  "simplifier": {
+    "repo": "agentlans/flan-t5-small-simplifier",
+    "revision": "2ca82fd4428bd0a63725f391b3213fad6c217102",
+    "files": {
+      "config.json": {
+        "sha256": "9681d12b9806c68a0b7eb9732a15ddcfaff87c8ba95359c4f5c0a9ffaaff6229",
+        "size": 1555
+      },
+      "generation_config.json": {
+        "sha256": "d0031511836762ca658c199b979dbda5cca88d7926c237703ec0e86487487162",
+        "size": 142
+      },
+      "tokenizer.json": {
+        "sha256": "0869676ddebc30f73c748047ede53638136ef5b8ad2ea37f4928625841f4d01c",
+        "size": 2422332
+      },
+      "tokenizer_config.json": {
+        "sha256": "6fa625547e73f7a565e5fa7f6cc0b89e61c521c15816c8415238f639fa5b9e21",
+        "size": 20771
+      },
+      "special_tokens_map.json": {
+        "sha256": "7a1985a994c41886db38c719d2a3d2f40606663cc19d7c5d6a85d349320e06d2",
+        "size": 2543
+      },
+      "spiece.model": {
+        "sha256": "d60acb128cf7b7f2536e8f38a5b18a05535c9e14c7a355904270e15b0945ea86",
+        "size": 791656
+      },
+      "model.safetensors": {
+        "sha256": "60b88aa834b0082713d975c6bfc35e06f3285d250cc0d36872a769c3993903b7",
+        "size": 307867048
+      }
+    }
+  },
+  "grammar": {
+    "repo": "selfnify/proximity",
+    "revision": "91b0200215359d64c6e7120af04669aed4754294",
+    "files": {
+      "config.json": {
+        "sha256": "2d30c3ba71ddc331bf12389c35f7c576aa1b0758b9deb7410ed969dc51dc1ff1",
+        "size": 1553
+      },
+      "generation_config.json": {
+        "sha256": "95a3d792e5445aaaaf56c73b30dbdc48a7f9b81fde9a66ef9ff0f3e7a0fa55b1",
+        "size": 152
+      },
+      "tokenizer.json": {
+        "sha256": "30ecc5c7c3f2a5e24f1837df50ad6288e12aef9c78a12eede8f67489faec1c45",
+        "size": 2424332
+      },
+      "tokenizer_config.json": {
+        "sha256": "4cc3e49b271417224347dc37ce50f356a981fb01e036fe69f28c7b66037b3edc",
+        "size": 2396
+      },
+      "model.safetensors": {
+        "sha256": "1cd03fcb466e70bd06edbf83961f21fcb8a92ba11eeb0b21ad7c36156569bbc0",
+        "size": 242041896
+      }
+    }
+  },
+  "autocomplete": {
+    "repo": "Xenova/distilgpt2",
+    "revision": "a41c10485c18a64b6606729b6a082330cbd8f49e",
+    "files": {
+      "config.json": {
+        "sha256": "0e0fb9cdeb3a605afc6ce8f1c9830a2d78c7ad2596e498acc66b4ab2338edf51",
+        "size": 987
+      },
+      "generation_config.json": {
+        "sha256": "fa12d604e4ab52705c56eb9394c5d6a451cee884607fc25a8cd3388fc775c2be",
+        "size": 124
+      },
+      "tokenizer.json": {
+        "sha256": "cda20b8ca044949aa07ac4078420c80d1a57139d5f9f33700e46fb2d891e7c66",
+        "size": 2107653
+      },
+      "tokenizer_config.json": {
+        "sha256": "551e26ec611d8d0c8edc3ef72e518a38418cb71f40de1347dd486a595e1557d7",
+        "size": 234
+      },
+      "onnx/decoder_model_merged_quantized.onnx": {
+        "sha256": "dfd02dcbfccb31d289cac235f71cecad357030866fe7019f05a36b1c5692afba",
+        "size": 84911479
+      }
+    }
+  }
+}

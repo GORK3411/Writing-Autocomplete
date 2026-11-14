@@ -1,19 +1,20 @@
-"""Feature 5: live difficulty score, per sentence.
+"""Feature 5. Convert Flesch Reading Ease to a difficulty estimate."""
 
-The frontend averages the sentence scores (weighted by length) for the Easy -> Hard
-gauge, and paints the sentences with `hard=True` in pink.
+import re
 
-Planned: DistilRoBERTa regression trained on the CLEAR corpus (CommonLit).
-"""
+import textstat
 
-from app.features._placeholder import pseudo_random
+from app.lexical import outside_triggers
 from app.schemas import DifficultyResponse
 
-# Sentences scoring at least this much are highlighted in pink.
-HARD_THRESHOLD = 90
+HARD_THRESHOLD = 65
+
+
+def reading_ease(text):
+    return textstat.flesch_reading_ease(text) if re.search(r"[a-z]", text, re.I) else 100
 
 
 def score_sentence(sentence: str) -> DifficultyResponse:
-    """Difficulty of one finished sentence: score 0 (easy) .. 100 (hard)."""
-    score = round(pseudo_random("difficulty:" + sentence) * 100, 1)  # DUMMY
+    ease = reading_ease(outside_triggers(sentence))
+    score = max(0, min(100, round(100 - ease)))
     return DifficultyResponse(score=score, hard=score >= HARD_THRESHOLD)

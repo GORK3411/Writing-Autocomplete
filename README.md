@@ -1,70 +1,43 @@
-# Writing-Autocomplete
+# Smart Writing
 
-A writing assistant that helps you **while you type**: it finds the words you need and keeps your text easy to read.
+A local writing assistant for the NLP course. Type in the notebook, look up words as you write, and review changes before applying them.
 
-- **Frontend:** React + Vite (`frontend/`)
-- **Backend:** Python + FastAPI (`backend/`), where all the NLP models live
+## Start on Windows
 
-## How to run the project
+1. Install 64-bit Python 3.12 and Node.js 22 or newer.
+2. Double-click **Setup Smart Writing.cmd** while online. The first setup installs dependencies, downloads pinned models and dictionaries, builds the WikiText n-gram table, and compiles the editor. Leave the window open until it reports success.
+3. Double-click **Start Smart Writing.cmd**. The editor opens at [localhost:8000](http://127.0.0.1:8000/). Leave the launcher running until you finish. The editor, fonts, models, and runtime assets are served from this machine.
 
-You need **Python 3.11+** and **Node.js 18+**. Use two terminals: one for the backend, one for the frontend.
+The browser saves your draft on this origin. Model inference runs locally. Use the same browser and address to recover the same draft. Setup and browser verification were performed with Chrome on Windows.
 
-### 1. Backend (terminal 1)
+## Rehearse the features
 
-```bash
-cd backend
-python -m venv .venv
-# Windows: .venv\Scripts\activate   |   macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
+| Try this | What to do |
+| --- | --- |
+| I am "a person who writes books". | Click inside the quotes or press **Alt+Enter** with the caret inside them. Choose **an author**. |
+| I feel [fatigué]. I read a [كتاب]. | Look up the French and Arabic words. Review the English options. |
+| The exam was {something very easy}. | Choose **a piece of cake**. |
+| The results show that the | Type a trailing space. Press **Tab** when grey text appears at the end. |
+| We will utilize a very big box. | Review yellow and blue highlights. Apply both fixes in the sidebar, then use **Undo last edit**. |
+| The committee utilized complicated terminology to describe the implementation process. | Check the readability gauge. Select **Simplify sentence** and review a rewrite if one passes the checks. |
+| I has a apple | Select **Check draft** to include this sentence even without a period. Review the red fixes before applying them. |
 
-The backend runs on http://127.0.0.1:8000. API docs (to try each endpoint): http://127.0.0.1:8000/docs
+The 0–100 gauge is a Flesch-based estimate. Translation and retrieval coverage depend on the dictionaries. Generated corrections and simpler versions need a meaning check.
 
-The first time only, build the next-word table used by the autocomplete (feature 4). It takes a few minutes:
+## Troubleshoot
 
-```bash
-python scripts/build_ngram.py   # writes frontend/public/ngram.json (generated, not committed)
-```
+- If the launcher lists missing files, rerun setup. Verified files are reused. A first setup can take several minutes depending on download speed.
+- If port 8000 is busy, close the earlier local server. Run the launcher again.
+- Check [readiness](http://127.0.0.1:8000/ready) and the launcher output when a feature is unavailable. Use **Check draft** to retry analysis.
+- The first description lookup builds the WordNet search index and may take tens of seconds. Open the author example before presenting and leave the launcher running for the demo.
+- Blank lookup results mean that none of the retrieved words passed the match threshold. Rephrase the description or supply context to distinguish dictionary senses.
 
-### 2. Frontend (terminal 2)
+## Local protections
 
-```bash
-cd frontend
-npm install
-npm run dev
-```
+The launcher binds to loopback. The API accepts only loopback hostnames and known local browser origins, requires JSON for analysis, and caps request bodies. A strict browser policy keeps the packaged editor's script, font, and model requests local. Model files are checked against the pinned manifest before use. The draft is saved by this browser's local storage. Clear the site data on a shared computer when you finish.
 
-Open http://localhost:5173. The dev server forwards every `/api/...` call to the backend on port 8000, so **start the backend first**. If the backend is not running, the editor still works, but without highlights or suggestions.
+## Develop and inspect
 
-After the first time, you only need `uvicorn app.main:app --reload` (in `backend/` with the venv active) and `npm run dev` (in `frontend/`).
+Run the backend from backend/ using its venv with python -m uvicorn app.main:app --reload. Run npm run dev from frontend/. Vite proxies API requests to 127.0.0.1:8000. The [API guide](backend/README.md) lists the endpoints and validation commands.
 
-## Where to plug in each model
-
-Each feature has one backend endpoint, already called by the frontend. All of them **return dummy values for now**. To connect a real model, **edit only the function in the last column**: the route and the frontend don't need to change.
-
-| # | Feature | Endpoint | Backend function to edit | Input | Must return |
-|---|---|---|---|---|---|
-| 1 | Description to word | `POST /api/describe` | `describe_to_words` in [describe.py](backend/app/features/describe.py) | `query`, `sentence` | `list[Candidate]` (`text`, `score` 0–1), best first |
-| 2 | Word in another language | `POST /api/translate` | `translate_word` in [translate.py](backend/app/features/translate.py) | `query`, `sentence` | `list[Candidate]`, best first |
-| 3 | Idiom finder | `POST /api/idiom` | `find_idioms` in [idiom.py](backend/app/features/idiom.py) | `query`, `sentence` | `list[Candidate]`, best first |
-| 4 | Next-word autocomplete | none (runs in the browser) | ✅ **DONE — MUST NOT BE TOUCHED** | — | — |
-| 5 | Live difficulty score | `POST /api/difficulty` | `score_sentence` in [difficulty.py](backend/app/features/difficulty.py) | `sentence` | `DifficultyResponse` (`score` 0–100, `hard` = paint it pink) |
-| 6 | Simplify this | `POST /api/simplify` | `simplify_sentence` in [simplify.py](backend/app/features/simplify.py) | `sentence` | `str`: the simpler sentence |
-| 7 | Hard words (yellow) | `POST /api/hard-words` | `find_hard_words` in [hard_words.py](backend/app/features/hard_words.py) | `sentence` | `list[Span]` |
-| 8 | Better words (blue) | `POST /api/better-words` | `find_better_words` in [better_words.py](backend/app/features/better_words.py) | `sentence` | `list[Span]` |
-| 9 | Spelling & grammar (red) | `POST /api/grammar` | `find_errors` in [grammar.py](backend/app/features/grammar.py) | `sentence` | `list[Span]` |
-
-> [!WARNING]
-> **Feature 4 (next-word autocomplete) is done and MUST NOT BE TOUCHED.**
-> Do not edit [llm.js](frontend/src/llm.js), [ngram.js](frontend/src/ngram.js), [build_ngram.py](backend/scripts/build_ngram.py), or the feature 4 section of [App.jsx](frontend/src/App.jsx).
-
-**Notes:**
-
-- **`Span`** = `start`, `end`, `text`, `suggestion`. The offsets are Python string indices, and `sentence[start:end]` must equal `text`. A span can cover several words, like `very big` → `huge`. If a span's offsets don't match its `text`, the frontend ignores it instead of highlighting the wrong word.
-- **Features 1–3:** `sentence` is the whole sentence with the trigger (`"..."`, `[...]`, `{...}`) still in it, so the model can rerank candidates in context.
-- **Feature 5:** to change when a sentence turns pink, edit `HARD_THRESHOLD` in the same file. The gauge is computed in the frontend as the average of the sentence scores, weighted by length.
-- **Feature 9:** the planned T5 model rewrites the whole sentence. Compare the input and the output to get the spans.
-- The data types are defined in [schemas.py](backend/app/schemas.py) and the routes in [api.py](backend/app/api.py). You only need to change those if a feature has to return a new field.
-- The frontend calls every endpoint through [api.js](frontend/src/api.js) and caches the answers per sentence, so only new or edited sentences are sent to the backend.
-- **Never commit datasets or model weights.** Put them on Google Drive / Hugging Face Hub and add a download script (see [CLAUDE.md](CLAUDE.md)).
+See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the implementation checklist, methods, sources, and classroom validation results. [CLAUDE.md](CLAUDE.md) records the original design.

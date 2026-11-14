@@ -40,7 +40,7 @@ export function Popover({ title, titleColor, bg, width, onClose, children }) {
 
   useEffect(() => {
     const first = ref.current?.querySelector('[data-opt]');
-    first?.focus({ preventScroll: true });
+    (first ?? ref.current?.querySelector('button'))?.focus({ preventScroll: true });
   }, []);
 
   const onKeyDown = (e) => {

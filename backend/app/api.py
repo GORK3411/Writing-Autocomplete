@@ -18,6 +18,7 @@ from app.features.translate import translate_word
 from app.schemas import (
     CandidatesResponse,
     DifficultyResponse,
+    GrammarRequest,
     SentenceRequest,
     SimplifyResponse,
     SpansResponse,
@@ -31,28 +32,28 @@ def _no_query(req: TriggerRequest) -> bool:
     return not req.query.strip()
 
 
-@router.post("/describe", response_model=CandidatesResponse, tags=["1 description to word"])
+@router.post("/describe", response_model=CandidatesResponse, response_model_exclude_none=True, tags=["1 description to word"])
 def describe(req: TriggerRequest) -> CandidatesResponse:
     """Feature 1: "a person who writes books" -> author."""
     if _no_query(req):
         return CandidatesResponse(candidates=[])
-    return CandidatesResponse(candidates=describe_to_words(req.query, req.sentence))
+    return CandidatesResponse(candidates=describe_to_words(req.query, req.sentence, req.trigger_start))
 
 
-@router.post("/translate", response_model=CandidatesResponse, tags=["2 word in another language"])
+@router.post("/translate", response_model=CandidatesResponse, response_model_exclude_none=True, tags=["2 word in another language"])
 def translate(req: TriggerRequest) -> CandidatesResponse:
     """Feature 2: [fatigué] -> tired."""
     if _no_query(req):
         return CandidatesResponse(candidates=[])
-    return CandidatesResponse(candidates=translate_word(req.query, req.sentence))
+    return CandidatesResponse(candidates=translate_word(req.query, req.sentence, req.trigger_start))
 
 
-@router.post("/idiom", response_model=CandidatesResponse, tags=["3 idiom finder"])
+@router.post("/idiom", response_model=CandidatesResponse, response_model_exclude_none=True, tags=["3 idiom finder"])
 def idiom(req: TriggerRequest) -> CandidatesResponse:
     """Feature 3: {something very easy} -> a piece of cake."""
     if _no_query(req):
         return CandidatesResponse(candidates=[])
-    return CandidatesResponse(candidates=find_idioms(req.query, req.sentence))
+    return CandidatesResponse(candidates=find_idioms(req.query, req.sentence, req.trigger_start))
 
 
 @router.post("/difficulty", response_model=DifficultyResponse, tags=["5 difficulty score"])
@@ -80,6 +81,6 @@ def better_words(req: SentenceRequest) -> SpansResponse:
 
 
 @router.post("/grammar", response_model=SpansResponse, tags=["9 spelling & grammar"])
-def grammar(req: SentenceRequest) -> SpansResponse:
+def grammar(req: GrammarRequest) -> SpansResponse:
     """Feature 9 (red): spelling and grammar errors with their correction."""
-    return SpansResponse(spans=find_errors(req.sentence))
+    return SpansResponse(spans=find_errors(req.sentence, req.thorough))

@@ -1,10 +1,22 @@
 // src/llm.js — loads the next-word model once and shares it.
-import { pipeline } from "@huggingface/transformers";
+import { env, pipeline } from "@huggingface/transformers";
 
 // DistilGPT-2 (8-bit quantized, roughly 100 MB): small and fast enough for live ghost text.
 // It runs on WASM (CPU): for a model this size it's quick and needs no WebGPU
 // shader compilation at startup, and it works in every browser.
 const MODEL = "Xenova/distilgpt2";
+
+// The setup script prepares this exact model and the matching runtime assets.
+env.allowLocalModels = true;
+env.allowRemoteModels = false;
+env.localModelPath = import.meta.env.BASE_URL + "models/";
+const wasmRoot = new URL(import.meta.env.BASE_URL + "ort/", location.origin);
+env.backends.onnx.wasm.wasmPaths = {
+  mjs: new URL("ort-wasm-simd-threaded.asyncify.mjs", wasmRoot).href,
+  wasm: new URL("ort-wasm-simd-threaded.asyncify.wasm", wasmRoot).href,
+};
+env.backends.onnx.wasm.numThreads = 2;
+env.backends.onnx.wasm.proxy = true;
 
 let generatorPromise = null;
 
@@ -20,6 +32,7 @@ async function load() {
   const t0 = performance.now();
   const gen = await pipeline("text-generation", MODEL, {
     device: "wasm",
+    model_file_name: "decoder_model_merged",
     dtype: "q8",
     progress_callback: logProgress,
   });
